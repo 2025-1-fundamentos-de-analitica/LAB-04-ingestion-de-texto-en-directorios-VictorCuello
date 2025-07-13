@@ -68,6 +68,71 @@ def pregunta_01():
     |  3 | Both operating profit and net sales for the three-month period increased , respectively from EUR16 .0 m and EUR139m , as compared to the corresponding quarter in 2006 | positive |
     |  4 | Tampere Science Parks is a Finnish company that owns , leases and builds office properties and it specialises in facilities for technology-oriented businesses         | neutral  |
     ```
-
-
     """
+    import zipfile
+    import os
+    import pandas as pd
+
+    # Paso 1: Descomprimir el archivo ZIP.
+    # El archivo 'files/input.zip' se descomprimirá en el directorio raíz,
+    # creando la carpeta 'input/'.
+    if os.path.exists("input"):
+        import shutil
+        shutil.rmtree("input")
+        
+    with zipfile.ZipFile("files/input.zip", "r") as zip_ref:
+        zip_ref.extractall()
+
+    # --- INICIO DE LA CORRECCIÓN ---
+    # La prueba espera que la carpeta de salida esté en 'files/output/'.
+    # Se define la ruta de salida correctamente.
+    output_dir = "files/output"
+    # --- FIN DE LA CORRECCIÓN ---
+
+    # Paso 2: Asegurarse de que el directorio de salida exista.
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    def process_directory(dataset_path):
+        """
+        Lee todos los archivos de texto de una ruta de conjunto de datos (ej. 'input/train')
+        y extrae la frase y el sentimiento (basado en el subdirectorio).
+        Retorna una lista de tuplas (frase, sentimiento).
+        """
+        data = []
+        sentiments = ["positive", "negative", "neutral"]
+
+        for sentiment in sentiments:
+            sentiment_path = os.path.join(dataset_path, sentiment)
+            if not os.path.isdir(sentiment_path):
+                continue
+            
+            # Ordenar los archivos para un procesamiento determinista y consistente
+            filenames = sorted(os.listdir(sentiment_path))
+            for filename in filenames:
+                if filename.endswith(".txt"):
+                    file_path = os.path.join(sentiment_path, filename)
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        # Leer contenido, limpiar espacios y saltos de línea
+                        phrase = f.read().strip().replace("\n", " ")
+                        data.append((phrase, sentiment))
+        return data
+
+    # Paso 3: Procesar los datos de entrenamiento y prueba.
+    # Las rutas de entrada son relativas a la raíz del proyecto.
+    train_data = process_directory("input/train")
+    test_data = process_directory("input/test")
+
+    # Paso 4: Crear DataFrames de pandas.
+    # Se usa el nombre de columna 'target' según el ejemplo en la descripción.
+    train_df = pd.DataFrame(train_data, columns=["phrase", "target"])
+    test_df = pd.DataFrame(test_data, columns=["phrase", "target"])
+
+    # Paso 5: Guardar los DataFrames en archivos CSV en la carpeta 'output' corregida.
+    # Se omite el índice del DataFrame en el archivo CSV.
+    train_df.to_csv(os.path.join(output_dir, "train_dataset.csv"), index=False)
+    test_df.to_csv(os.path.join(output_dir, "test_dataset.csv"), index=False)
+    
+    # Limpieza de la carpeta descomprimida para no interferir con otras ejecuciones.
+    import shutil
+    shutil.rmtree("input")
